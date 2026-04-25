@@ -1,10 +1,13 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Session } from '../types/auth';
 import { getSession, setSession, getUsers, setUsers } from '../utils/storage';
 
+const AUTH_CHANGE_EVENT = 'itil-auth-change';
+
 interface AuthContextValue {
   currentUser: Session | null;
-  login: (email: string, password: string) => boolean;
+  verifyCredentials: (email: string, password: string) => Session | null;
+  login: (session: Session) => void;
   logout: () => void;
   updateProfile: (payload: { name: string; password?: string }) => { success: boolean; message?: string };
 }
@@ -14,19 +17,39 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Session | null>(() => getSession());
 
-  const login = useCallback((email: string, password: string): boolean => {
+  useEffect(() => {
+    const syncSession = () => {
+      setCurrentUser(getSession());
+    };
+
+    window.addEventListener(AUTH_CHANGE_EVENT, syncSession);
+    window.addEventListener('storage', syncSession);
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, syncSession);
+      window.removeEventListener('storage', syncSession);
+    };
+  }, []);
+
+  const verifyCredentials = useCallback((email: string, password: string): Session | null => {
     const users = getUsers();
     const found = users.find(u => u.email === email && u.password === password);
-    if (!found) return false;
-    const session: Session = { id: found.id, name: found.name, email: found.email, role: found.role };
+    if (!found) {
+      return null;
+    }
+
+    return { id: found.id, name: found.name, email: found.email, role: found.role };
+  }, []);
+
+  const login = useCallback((session: Session): void => {
     setSession(session);
     setCurrentUser(session);
-    return true;
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
   }, []);
 
   const logout = useCallback(() => {
     setSession(null);
     setCurrentUser(null);
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
   }, []);
 
   const updateProfile = useCallback((payload: { name: string; password?: string }) => {
@@ -63,12 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setSession(updatedSession);
     setCurrentUser(updatedSession);
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 
     return { success: true };
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ currentUser, verifyCredentials, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

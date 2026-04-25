@@ -47,6 +47,7 @@ export default function App() {
     return saved === 'edit' ? 'edit' : 'view';
   });
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const previousUserIdRef = useRef<string | null>(currentUser?.id ?? null);
 
   useEffect(() => {
     if (currentUser) {
@@ -62,6 +63,21 @@ export default function App() {
     if (currentUser?.role !== 'admin') {
       setAdminMode('view');
     }
+  }, [currentUser]);
+
+  useEffect(() => {
+    const previousUserId = previousUserIdRef.current;
+    const nextUserId = currentUser?.id ?? null;
+
+    if (!previousUserId && nextUserId) {
+      setActiveView('dashboard');
+      setFocusNodeId(undefined);
+      setShowSearchPanel(false);
+      setShowUserMenu(false);
+      setIsSidebarOpen(false);
+    }
+
+    previousUserIdRef.current = nextUserId;
   }, [currentUser]);
 
   useEffect(() => {
@@ -125,10 +141,8 @@ export default function App() {
     });
   }, []);
 
-  if (!currentUser) return <LoginPage />;
-
   const current = processes.find(p => p.key === activeProcessKey) ?? processes[0];
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
   const isEditMode = isAdmin && adminMode === 'edit';
 
   const filteredSearchProcesses = useMemo(() => {
@@ -168,6 +182,10 @@ export default function App() {
       setIsSidebarOpen(false);
     }
   }, []);
+
+  if (!currentUser) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-transparent">
