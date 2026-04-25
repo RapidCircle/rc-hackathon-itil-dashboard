@@ -60,7 +60,7 @@ export const incidentNodes: ProcessNode[] = [
   },
   {
     id: 'i5',
-    position: { x: 300, y: 330 },
+    position: { x: 300, y: 350 },
     data: {
       label: 'Can L1 Resolve?',
       metadata: {
@@ -70,7 +70,7 @@ export const incidentNodes: ProcessNode[] = [
       },
     },
     type: 'default',
-    style: { ...nodeDefaults.style, background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 4, transform: 'rotate(0deg)' },
+    style: { ...nodeDefaults.style, background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 4 },
   },
   {
     id: 'i6',
