@@ -5,6 +5,12 @@ import { problemNodes, problemEdges, problemInfo } from '../data/problem-process
 import { alertingNodes, alertingEdges, alertingInfo } from '../data/alerting-process';
 import { getUsers, setUsers, getProcesses, setProcesses, normalizeProcessInfo } from './storage';
 
+// Bump this version whenever built-in process data (nodes/edges/positions) changes.
+// On mismatch the built-in processes are reseeded from the data files while any
+// admin-added custom processes are preserved.
+const SEED_VERSION = '4';
+const SEED_VERSION_KEY = 'itil_seed_version';
+
 export const DEMO_OTP_CODE = '123456';
 
 export const DEMO_USERS: User[] = [
@@ -90,7 +96,22 @@ export function seedIfEmpty(): void {
   if (mergedUsers.length !== existingUsers.length) {
     setUsers(mergedUsers);
   }
-  if (getProcesses().length === 0) {
+
+  const existingProcesses = getProcesses();
+  const storedVersion = localStorage.getItem(SEED_VERSION_KEY);
+
+  if (existingProcesses.length === 0) {
     setProcesses(seedProcesses);
+    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+  } else if (storedVersion !== SEED_VERSION) {
+    // Reseed built-in processes from the data files; preserve any admin-added custom processes.
+    const builtInKeys = new Set(seedProcesses.map(p => p.key));
+    const customProcesses = existingProcesses.filter(p => !builtInKeys.has(p.key));
+    setProcesses([...seedProcesses, ...customProcesses]);
+    // Set the version BEFORE reloading so the next load doesn't reseed again.
+    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+    // Force a full page reload so React re-initialises all state from the
+    // freshly written localStorage (avoids stale positions surviving HMR).
+    window.location.reload();
   }
 }
