@@ -9,7 +9,7 @@ export const incidentNodes: Node[] = [
   { id: 'i2', position: { x: 300, y: 80 }, data: { label: 'Log & Categorize' }, style: { ...nodeDefaults.style, background: '#dbeafe', border: '2px solid #3b82f6' } },
   { id: 'i3', position: { x: 300, y: 160 }, data: { label: 'Assign Priority (P1-P4)' }, style: { ...nodeDefaults.style, background: '#dbeafe', border: '2px solid #3b82f6' } },
   { id: 'i4', position: { x: 300, y: 240 }, data: { label: 'L1 Support Investigates' }, style: { ...nodeDefaults.style, background: '#bfdbfe', border: '2px solid #2563eb' } },
-  { id: 'i5', position: { x: 300, y: 330 }, data: { label: 'Can L1 Resolve?' }, type: 'default', style: { ...nodeDefaults.style, background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 4, transform: 'rotate(0deg)' } },
+  { id: 'i5', position: { x: 300, y: 330 }, data: { label: 'Can L1 Resolve?' }, style: { ...nodeDefaults.style, background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 4 } },
   { id: 'i6', position: { x: 80, y: 420 }, data: { label: 'Apply Fix & Document' }, style: { ...nodeDefaults.style, background: '#d1fae5', border: '2px solid #10b981' } },
   { id: 'i7', position: { x: 520, y: 420 }, data: { label: 'Escalate to L2' }, style: { ...nodeDefaults.style, background: '#fed7aa', border: '2px solid #f97316' } },
   { id: 'i8', position: { x: 520, y: 510 }, data: { label: 'L2 Deep Investigation' }, style: { ...nodeDefaults.style, background: '#fed7aa', border: '2px solid #f97316' } },
