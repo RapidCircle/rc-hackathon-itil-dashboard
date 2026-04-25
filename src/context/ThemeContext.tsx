@@ -50,13 +50,23 @@ function applyThemeToDocument(theme: ThemeTokens, mode: AppearanceMode): void {
   const root = document.documentElement;
   const isDarkMode = mode === 'dark';
 
-  root.style.setProperty('--rc-primary', theme.primary);
-  root.style.setProperty('--rc-primary-50', theme.primary50);
-  root.style.setProperty('--rc-primary-100', theme.primary100);
-  root.style.setProperty('--rc-primary-600', theme.primary600);
-  root.style.setProperty('--rc-primary-700', theme.primary700);
-  root.style.setProperty('--rc-primary-900', theme.primary900);
-  root.style.setProperty('--rc-primary-950', theme.primary950);
+  const runtimePrimary = {
+    primary: isDarkMode ? '#60A5FA' : theme.primary,
+    primary50: isDarkMode ? '#1E293B' : theme.primary50,
+    primary100: isDarkMode ? '#334155' : theme.primary100,
+    primary600: isDarkMode ? '#3B82F6' : theme.primary600,
+    primary700: isDarkMode ? '#2563EB' : theme.primary700,
+    primary900: isDarkMode ? '#BFDBFE' : theme.primary900,
+    primary950: isDarkMode ? '#DBEAFE' : theme.primary950,
+  };
+
+  root.style.setProperty('--rc-primary', runtimePrimary.primary);
+  root.style.setProperty('--rc-primary-50', runtimePrimary.primary50);
+  root.style.setProperty('--rc-primary-100', runtimePrimary.primary100);
+  root.style.setProperty('--rc-primary-600', runtimePrimary.primary600);
+  root.style.setProperty('--rc-primary-700', runtimePrimary.primary700);
+  root.style.setProperty('--rc-primary-900', runtimePrimary.primary900);
+  root.style.setProperty('--rc-primary-950', runtimePrimary.primary950);
   root.style.setProperty('--rc-accent', theme.accent);
   root.style.setProperty('--rc-accent-soft', theme.accentSoft);
   root.style.setProperty('--rc-surface', isDarkMode ? '#111827' : theme.surface);

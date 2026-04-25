@@ -94,6 +94,13 @@ textarea:focus-visible {
 }
 
 .dark {
+  --rc-primary: #60A5FA;
+  --rc-primary-50: #1E293B;
+  --rc-primary-100: #334155;
+  --rc-primary-600: #3B82F6;
+  --rc-primary-700: #2563EB;
+  --rc-primary-900: #BFDBFE;
+  --rc-primary-950: #DBEAFE;
   --rc-bg-start: #0B1220;
   --rc-bg-end: #111827;
   --rc-surface-elevated: #1F2937;
@@ -113,10 +120,27 @@ textarea:focus-visible {
   color: #94A3B8;
 }
 
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+  color: #E5E7EB;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #94A3B8;
+}
+
 .dark .bg-white,
 .dark .bg-white\/95,
-.dark .bg-white\/85 {
+.dark .bg-white\/85,
+.dark .bg-white\/80,
+.dark .bg-white\/70 {
   background-color: color-mix(in srgb, var(--rc-surface-elevated) 94%, transparent);
+}
+
+.dark .border-white\/50 {
+  border-color: color-mix(in srgb, var(--rc-border-soft) 80%, transparent);
 }
 
 .dark .bg-gray-50,
@@ -124,9 +148,17 @@ textarea:focus-visible {
   background-color: #111827;
 }
 
+.dark .bg-slate-50 {
+  background-color: #111827;
+}
+
 .dark .border-gray-100,
 .dark .border-gray-200,
 .dark .border-gray-300 {
+  border-color: var(--rc-border-soft);
+}
+
+.dark .border-slate-200 {
   border-color: var(--rc-border-soft);
 }
 
@@ -232,6 +264,21 @@ textarea:focus-visible {
 .dashboard-module-card:hover {
   border-color: color-mix(in srgb, var(--rc-primary-100) 92%, white);
   box-shadow: 0 20px 40px -30px color-mix(in srgb, var(--rc-primary-900) 40%, transparent);
+}
+
+.dark .current-process-card {
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--rc-primary-600) 22%, #0f172a), color-mix(in srgb, var(--rc-surface-elevated) 96%, #020617));
+  border-color: color-mix(in srgb, var(--rc-border-soft) 85%, #0f172a);
+}
+
+.dark .current-process-card .text-gray-900 {
+  color: #f8fafc;
+}
+
+.dark .current-process-card .text-gray-600,
+.dark .current-process-card .text-gray-500 {
+  color: #cbd5e1;
 }
 
 .dark .react-flow__edge path {
