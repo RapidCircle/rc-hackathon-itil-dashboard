@@ -8,7 +8,7 @@ import { getUsers, setUsers, getProcesses, setProcesses, normalizeProcessInfo } 
 // Bump this version whenever built-in process data (nodes/edges/positions) changes.
 // On mismatch the built-in processes are reseeded from the data files while any
 // admin-added custom processes are preserved.
-const SEED_VERSION = '4';
+const SEED_VERSION = '5';
 const SEED_VERSION_KEY = 'itil_seed_version';
 
 export const DEMO_OTP_CODE = '123456';

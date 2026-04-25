@@ -60,7 +60,7 @@ export const incidentNodes: ProcessNode[] = [
   },
   {
     id: 'i5',
-    position: { x: 300, y: 350 },
+    position: { x: 300, y: 320 },
     data: {
       label: 'Can L1 Resolve?',
       metadata: {
