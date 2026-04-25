@@ -6,7 +6,8 @@ const AUTH_CHANGE_EVENT = 'itil-auth-change';
 
 interface AuthContextValue {
   currentUser: Session | null;
-  login: (email: string, password: string) => boolean;
+  verifyCredentials: (email: string, password: string) => Session | null;
+  login: (session: Session) => void;
   logout: () => void;
   updateProfile: (payload: { name: string; password?: string }) => { success: boolean; message?: string };
 }
@@ -29,15 +30,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback((email: string, password: string): boolean => {
+  const verifyCredentials = useCallback((email: string, password: string): Session | null => {
     const users = getUsers();
     const found = users.find(u => u.email === email && u.password === password);
-    if (!found) return false;
-    const session: Session = { id: found.id, name: found.name, email: found.email, role: found.role };
+    if (!found) {
+      return null;
+    }
+
+    return { id: found.id, name: found.name, email: found.email, role: found.role };
+  }, []);
+
+  const login = useCallback((session: Session): void => {
     setSession(session);
     setCurrentUser(session);
     window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
-    return true;
   }, []);
 
   const logout = useCallback(() => {
@@ -86,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ currentUser, verifyCredentials, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

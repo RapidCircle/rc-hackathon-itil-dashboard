@@ -5,13 +5,31 @@ import { problemNodes, problemEdges, problemInfo } from '../data/problem-process
 import { alertingNodes, alertingEdges, alertingInfo } from '../data/alerting-process';
 import { getUsers, setUsers, getProcesses, setProcesses, normalizeProcessInfo } from './storage';
 
-const seedAdmin: User = {
-  id: 'admin-1',
-  name: 'Admin',
-  email: 'admin@itil.com',
-  password: 'Admin@123',
-  role: 'admin',
-};
+export const DEMO_OTP_CODE = '123456';
+
+export const DEMO_USERS: User[] = [
+  {
+    id: 'admin-1',
+    name: 'Admin',
+    email: 'admin@itil.com',
+    password: 'Admin@123',
+    role: 'admin',
+  },
+  {
+    id: 'sdm-1',
+    name: 'Service Desk Manager',
+    email: 'sdm@itil.com',
+    password: 'Sdm@123',
+    role: 'sdm',
+  },
+  {
+    id: 'user-1',
+    name: 'Support Analyst',
+    email: 'user@itil.com',
+    password: 'User@123',
+    role: 'user',
+  },
+];
 
 const seedProcesses: ProcessData[] = [
   {
@@ -59,8 +77,18 @@ const seedProcesses: ProcessData[] = [
 ];
 
 export function seedIfEmpty(): void {
-  if (getUsers().length === 0) {
-    setUsers([seedAdmin]);
+  const existingUsers = getUsers();
+  const mergedUsers = [...existingUsers];
+
+  for (const demoUser of DEMO_USERS) {
+    const existingIndex = mergedUsers.findIndex(user => user.email === demoUser.email);
+    if (existingIndex === -1) {
+      mergedUsers.push(demoUser);
+    }
+  }
+
+  if (mergedUsers.length !== existingUsers.length) {
+    setUsers(mergedUsers);
   }
   if (getProcesses().length === 0) {
     setProcesses(seedProcesses);

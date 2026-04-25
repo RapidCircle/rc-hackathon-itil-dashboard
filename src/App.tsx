@@ -141,10 +141,8 @@ export default function App() {
     });
   }, []);
 
-  if (!currentUser) return <LoginPage />;
-
   const current = processes.find(p => p.key === activeProcessKey) ?? processes[0];
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
   const isEditMode = isAdmin && adminMode === 'edit';
 
   const filteredSearchProcesses = useMemo(() => {
@@ -184,6 +182,10 @@ export default function App() {
       setIsSidebarOpen(false);
     }
   }, []);
+
+  if (!currentUser) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-transparent">
