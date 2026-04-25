@@ -1,12 +1,262 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
+@font-face {
+  font-family: 'Niveau Grotesk';
+  src: url('/Fonts/01.%20Niveau%20Grotesk/NiveauGroteskRegular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Niveau Grotesk';
+  src: url('/Fonts/01.%20Niveau%20Grotesk/NiveauGroteskMedium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/Fonts/02.%20Poppins/Poppins-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Asap';
+  src: url('/Fonts/03.%20Asap/Asap-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --rc-primary: #056DB6;
+  --rc-primary-50: #E9F3FB;
+  --rc-primary-100: #CCE4F6;
+  --rc-primary-600: #056DB6;
+  --rc-primary-700: #045D9B;
+  --rc-primary-900: #033F69;
+  --rc-primary-950: #022F4F;
+  --rc-accent: #3F3F3F;
+  --rc-accent-soft: #F2F2F2;
+  --rc-surface: #F7F9FC;
+  --rc-text: #3F3F3F;
+  --rc-muted: #6b7280;
+  --rc-bg-start: #E9F3FB;
+  --rc-bg-end: #F7F9FC;
+  --rc-surface-elevated: #FFFFFF;
+  --rc-border-soft: #E5E7EB;
+  --rc-flow-grid: #E2E8F0;
+}
+
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Niveau Grotesk', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background: radial-gradient(circle at top left, var(--rc-bg-start), var(--rc-bg-end) 55%);
+  color: var(--rc-text);
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+.font-asap {
+  font-family: 'Asap', system-ui, sans-serif;
+}
+
+.rc-card {
+  background: color-mix(in srgb, var(--rc-surface-elevated) 95%, transparent);
+  border: 1px solid var(--rc-border-soft);
+  border-radius: 0.75rem;
+}
+
+.rc-primary-btn {
+  background: var(--rc-primary-600);
+  color: #fff;
+  transition: background-color 0.2s ease;
+}
+
+.rc-primary-btn:hover {
+  background: var(--rc-primary-700);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--rc-primary);
+  outline-offset: 2px;
+}
+
+.dark {
+  --rc-bg-start: #0B1220;
+  --rc-bg-end: #111827;
+  --rc-surface-elevated: #1F2937;
+  --rc-border-soft: #334155;
+  --rc-flow-grid: #334155;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700 {
+  color: #E5E7EB;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: #94A3B8;
+}
+
+.dark .bg-white,
+.dark .bg-white\/95,
+.dark .bg-white\/85 {
+  background-color: color-mix(in srgb, var(--rc-surface-elevated) 94%, transparent);
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #111827;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: var(--rc-border-soft);
+}
+
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #0F172A;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0F172A;
+  color: #E5E7EB;
+  border-color: var(--rc-border-soft);
+}
+
+.dark input::placeholder,
+.dark select::placeholder,
+.dark textarea::placeholder {
+  color: #94A3B8;
+}
+
+.dark .react-flow__controls,
+.dark .react-flow__attribution {
+  background: color-mix(in srgb, var(--rc-surface-elevated) 94%, transparent);
+  border: 1px solid var(--rc-border-soft);
+  color: #E5E7EB;
+}
+
+.dark .react-flow__controls button {
+  background: transparent;
+  color: #E5E7EB;
+  border-bottom-color: var(--rc-border-soft);
+}
+
+.dark .react-flow__controls button:hover {
+  background: #0F172A;
+}
+
+/* Keep process node labels readable on light semantic node backgrounds in dark mode. */
+.dark .react-flow {
+  --xy-node-color: #111827;
+}
+
+.dark .react-flow__node {
+  color: #111827;
+}
+
+.search-result-item.active {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rc-primary-600) 20%, transparent);
+}
+
+.react-flow__node {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-hero {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--rc-primary-100) 82%, white) 0%, transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--rc-primary-50) 82%, white), color-mix(in srgb, var(--rc-surface-elevated) 92%, white));
+}
+
+.dashboard-stat-card {
+  border: 1px solid color-mix(in srgb, var(--rc-primary-100) 70%, white);
+  border-radius: 1rem;
+  background: color-mix(in srgb, white 82%, var(--rc-primary-50));
+  padding: 0.9rem 1rem;
+}
+
+.dashboard-stat-label {
+  color: var(--rc-muted);
+  font-family: 'Asap', system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dashboard-stat-value {
+  margin-top: 0.55rem;
+  color: var(--rc-primary-950);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.dashboard-stat-meta {
+  margin-top: 0.35rem;
+  color: var(--rc-muted);
+  font-family: 'Asap', system-ui, sans-serif;
+  font-size: 0.74rem;
+}
+
+.dashboard-module-card {
+  border: 1px solid color-mix(in srgb, var(--rc-border-soft) 82%, white);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 92%, var(--rc-primary-50)), color-mix(in srgb, white 98%, transparent));
+  padding: 1rem;
+  box-shadow: 0 10px 24px -22px color-mix(in srgb, var(--rc-primary-900) 52%, transparent);
+}
+
+.dashboard-module-card:hover {
+  border-color: color-mix(in srgb, var(--rc-primary-100) 92%, white);
+  box-shadow: 0 20px 40px -30px color-mix(in srgb, var(--rc-primary-900) 40%, transparent);
+}
+
+.dark .react-flow__edge path {
+  stroke-opacity: 0.9;
+}
+
+.dark .dashboard-hero {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--rc-primary-600) 20%, transparent) 0%, transparent 38%),
+    linear-gradient(135deg, color-mix(in srgb, #0f172a 82%, var(--rc-primary-950)), color-mix(in srgb, var(--rc-surface-elevated) 94%, #020617));
+}
+
+.dark .dashboard-stat-card,
+.dark .dashboard-module-card {
+  background: color-mix(in srgb, var(--rc-surface-elevated) 96%, #0f172a);
+  border-color: color-mix(in srgb, var(--rc-border-soft) 92%, #0f172a);
+}
+
+.dark .dashboard-stat-value {
+  color: #f8fafc;
+}
+
+@media (max-width: 1023px) {
+  .react-flow__controls {
+    transform: scale(0.92);
+    transform-origin: bottom right;
+  }
 }
