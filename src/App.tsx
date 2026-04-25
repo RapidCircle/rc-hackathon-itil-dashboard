@@ -81,6 +81,23 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!showUserMenu) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setShowUserMenu(false);
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showUserMenu]);
+
   const handleProcessUpdate = useCallback((updatedProcess: ProcessData) => {
     setProcessesState(prev => {
       const updated = prev.map(p => (p.key === updatedProcess.key ? updatedProcess : p));
@@ -198,7 +215,7 @@ export default function App() {
               onClick={() => handleSelectProcess(proc.key)}
               aria-label={`Switch to ${proc.info.title}`}
               className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 ${
-                activeProcessKey === proc.key
+                activeView === 'process' && activeProcessKey === proc.key
                   ? 'bg-[var(--rc-primary-50)] text-[var(--rc-primary-900)] border border-[var(--rc-primary-100)] shadow-sm'
                   : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:text-gray-900'
               }`}
@@ -212,7 +229,7 @@ export default function App() {
         {/* Stats */}
         {current && (
           <div className="p-4 border-t border-[var(--rc-primary-100)]">
-            <div className="bg-gradient-to-br from-[var(--rc-primary-50)] to-white rounded-lg p-3 border border-[var(--rc-primary-100)]">
+            <div className="current-process-card bg-gradient-to-br from-[var(--rc-primary-50)] to-white rounded-lg p-3 border border-[var(--rc-primary-100)]">
               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2 font-asap">Current Process</p>
               <div className="flex justify-between text-xs text-gray-600 mb-1">
                 <span>Nodes</span>
@@ -246,13 +263,13 @@ export default function App() {
 
           {isAdmin && !isEditMode && (
             <div className="px-3 py-2 rounded-lg text-xs text-gray-600 bg-white border border-[var(--rc-primary-100)] font-asap">
-              View mode active. Switch to Edit mode from top-right controls to manage users or process data.
+              View mode active. Switch to Edit mode from bottom-left admin controls to manage users or process data.
             </div>
           )}
         </div>
 
         {/* User footer */}
-        <div className="px-4 py-3 border-t border-[var(--rc-primary-100)]">
+        <div className="relative px-4 py-3 border-t border-[var(--rc-primary-100)]" ref={userMenuRef}>
           <div className="flex items-center justify-between mb-1">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-gray-800 truncate">{currentUser.name}</p>
@@ -261,6 +278,113 @@ export default function App() {
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowUserMenu(prev => !prev)}
+            className="mt-2 w-full rounded-lg border border-[var(--rc-primary-100)] bg-white px-3 py-2 text-left text-xs font-medium text-gray-900 hover:bg-[var(--rc-primary-50)] transition-colors"
+          >
+            {isAdmin ? 'Admin' : 'Account'} ▴
+          </button>
+
+          {showUserMenu && (
+            <div className="user-menu-panel absolute bottom-full left-4 right-4 z-50 mb-2 rc-card shadow-xl p-3 space-y-3">
+              <div className="pb-2 border-b border-[var(--rc-primary-100)]">
+                <p className="text-xs font-semibold text-gray-800 truncate">{currentUser.name}</p>
+                <p className="text-[11px] text-gray-500 truncate font-asap">{currentUser.email}</p>
+              </div>
+
+              <div>
+                <label htmlFor="sidebar-user-theme" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1 font-asap">
+                  Theme
+                </label>
+                <select
+                  id="sidebar-user-theme"
+                  aria-label="Select app theme"
+                  value={themeName}
+                  onChange={e => setThemeName(e.target.value as typeof themeName)}
+                  className="w-full px-2.5 py-1.5 border border-[var(--rc-primary-100)] rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)]"
+                >
+                  {themeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleAppearanceMode}
+                aria-label={appearanceMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-gray-900 bg-white border border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] transition-colors text-left"
+              >
+                {appearanceMode === 'dark' ? '☀️ Switch to Light Mode' : '🌙 Switch to Dark Mode'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowThemeSwatch(true);
+                  setShowUserMenu(false);
+                }}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-gray-900 bg-white border border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] transition-colors text-left"
+              >
+                🎨 Theme Preview
+              </button>
+
+              {isAdmin && (
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1 font-asap">Admin Mode</p>
+                  <div className="inline-flex w-full rounded-lg border border-[var(--rc-primary-100)] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setAdminMode('view')}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
+                        adminMode === 'view'
+                          ? 'bg-[var(--rc-primary-50)] text-gray-900'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminMode('edit')}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium border-l border-[var(--rc-primary-100)] transition-colors ${
+                        adminMode === 'edit'
+                          ? 'bg-[var(--rc-primary-50)] text-gray-900'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditProfile(true);
+                  setShowUserMenu(false);
+                }}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-gray-900 bg-white border border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] transition-colors text-left"
+              >
+                Edit Profile
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setShowUserMenu(false);
+                }}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors text-left"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
           <p className="text-[10px] text-gray-500 mt-2 text-center font-asap tracking-wide">{BRANDING.footerText}</p>
         </div>
       </aside>
@@ -319,120 +443,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setShowSearchPanel(true)}
-                    className="rounded-lg border border-[var(--rc-primary-100)] bg-[var(--rc-primary-50)] px-3 py-2 text-xs font-medium text-[var(--rc-primary-900)] hover:bg-white transition-colors"
+                    className="rounded-lg border border-[var(--rc-primary-100)] bg-[var(--rc-primary-50)] px-3 py-2 text-xs font-medium text-gray-900 hover:bg-white transition-colors"
                   >
                     Search
                   </button>
-
-                  <div className="relative" ref={userMenuRef}>
-                    <button
-                      type="button"
-                      onClick={() => setShowUserMenu(prev => !prev)}
-                      className="w-full rounded-lg border border-[var(--rc-primary-100)] bg-white px-3 py-2 text-xs font-medium text-[var(--rc-primary-900)] hover:bg-[var(--rc-primary-50)] transition-colors sm:w-auto"
-                    >
-                      {currentUser.name} ▾
-                    </button>
-
-                    {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-72 rc-card shadow-xl p-3 space-y-3 z-30">
-                        <div className="pb-2 border-b border-[var(--rc-primary-100)]">
-                          <p className="text-xs font-semibold text-gray-800 truncate">{currentUser.name}</p>
-                          <p className="text-[11px] text-gray-500 truncate font-asap">{currentUser.email}</p>
-                        </div>
-
-                        <div>
-                          <label htmlFor="header-user-theme" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1 font-asap">
-                            Theme
-                          </label>
-                          <select
-                            id="header-user-theme"
-                            aria-label="Select app theme"
-                            value={themeName}
-                            onChange={e => setThemeName(e.target.value as typeof themeName)}
-                            className="w-full px-2.5 py-1.5 border border-[var(--rc-primary-100)] rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)]"
-                          >
-                            {themeOptions.map(option => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={toggleAppearanceMode}
-                          aria-label={appearanceMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                          className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--rc-primary-900)] bg-white border border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] transition-colors text-left"
-                        >
-                          {appearanceMode === 'dark' ? '☀️ Switch to Light Mode' : '🌙 Switch to Dark Mode'}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowThemeSwatch(true);
-                            setShowUserMenu(false);
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--rc-primary-900)] bg-white border border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] transition-colors text-left"
-                        >
-                          🎨 Theme Preview
-                        </button>
-
-                        {isAdmin && (
-                          <div>
-                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1 font-asap">Admin Mode</p>
-                            <div className="inline-flex w-full rounded-lg border border-[var(--rc-primary-100)] overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={() => setAdminMode('view')}
-                                className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
-                                  adminMode === 'view'
-                                    ? 'bg-[var(--rc-primary-50)] text-[var(--rc-primary-900)]'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                                }`}
-                              >
-                                View
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAdminMode('edit')}
-                                className={`flex-1 px-3 py-1.5 text-xs font-medium border-l border-[var(--rc-primary-100)] transition-colors ${
-                                  adminMode === 'edit'
-                                    ? 'bg-[var(--rc-primary-50)] text-[var(--rc-primary-900)]'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                                }`}
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowEditProfile(true);
-                            setShowUserMenu(false);
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--rc-primary-900)] bg-white border border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] transition-colors text-left"
-                        >
-                          Edit Profile
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            logout();
-                            setShowUserMenu(false);
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors text-left"
-                        >
-                          Sign out
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </header>

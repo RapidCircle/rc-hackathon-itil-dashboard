@@ -44,7 +44,7 @@ function compareNodePosition(a: ProcessNode, b: ProcessNode): number {
   return a.position.x - b.position.x;
 }
 
-function buildAnimationPath(nodes: ProcessNode[], edges: Edge[]) {
+function buildGraphMaps(nodes: ProcessNode[], edges: Edge[]) {
   const nodeMap = new Map(nodes.map(node => [node.id, node]));
   const incoming = new Map<string, number>();
   const outgoing = new Map<string, Edge[]>();
@@ -75,37 +75,7 @@ function buildAnimationPath(nodes: ProcessNode[], edges: Edge[]) {
     .filter(node => (incoming.get(node.id) ?? 0) === 0)
     .sort(compareNodePosition);
 
-  const orderedNodes: string[] = [];
-  const orderedEdges: string[] = [];
-  const visitedNodes = new Set<string>();
-  const visitedEdges = new Set<string>();
-
-  const walk = (nodeId: string) => {
-    if (visitedNodes.has(nodeId)) {
-      return;
-    }
-    visitedNodes.add(nodeId);
-    orderedNodes.push(nodeId);
-
-    for (const edge of outgoing.get(nodeId) ?? []) {
-      if (!visitedEdges.has(edge.id)) {
-        visitedEdges.add(edge.id);
-        orderedEdges.push(edge.id);
-      }
-      walk(edge.target);
-    }
-  };
-
-  for (const root of roots) {
-    walk(root.id);
-  }
-
-  const remainingNodes = [...nodes].sort(compareNodePosition);
-  for (const node of remainingNodes) {
-    walk(node.id);
-  }
-
-  return { nodeIds: orderedNodes, edgeIds: orderedEdges };
+  return { outgoing, roots, nodeMap };
 }
 
 function generateId(prefix: string): string {
@@ -123,6 +93,7 @@ export default function FlowChart({
   onUpdate,
 }: FlowChartProps) {
   const chartViewportRef = useRef<HTMLDivElement | null>(null);
+  const moreActionsRef = useRef<HTMLDivElement | null>(null);
   const [flowInstance, setFlowInstance] = useState<ReactFlowInstance<ProcessNode, Edge> | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<ProcessNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -132,9 +103,15 @@ export default function FlowChart({
   const [info, setInfo] = useState<ProcessInfo>(processInfo);
   const [activeExport, setActiveExport] = useState<'png' | 'pdf' | null>(null);
   const [exportError, setExportError] = useState('');
+  const [showMoreActions, setShowMoreActions] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>('normal');
-  const [animationStep, setAnimationStep] = useState(0);
+  const [animatedNodeIds, setAnimatedNodeIds] = useState<string[]>([]);
+  const [animatedEdgeIds, setAnimatedEdgeIds] = useState<string[]>([]);
+  const [activeAnimatedEdgeId, setActiveAnimatedEdgeId] = useState<string | undefined>(undefined);
+  const [pendingDecision, setPendingDecision] = useState<{ nodeId: string; options: Edge[] } | null>(null);
+
+  const graphMaps = useMemo(() => buildGraphMaps(nodes, edges), [nodes, edges]);
 
   const persist = useCallback(
     (newNodes: ProcessNode[], newEdges: Edge[], newInfo: ProcessInfo) => {
@@ -165,6 +142,35 @@ export default function FlowChart({
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
   }, []);
+
+  useEffect(() => {
+    if (!showMoreActions) {
+      return;
+    }
+
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (moreActionsRef.current && !moreActionsRef.current.contains(target)) {
+        setShowMoreActions(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowMoreActions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentMouseDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentMouseDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showMoreActions]);
 
   const handleSaveNodeDetails = useCallback(() => {
     if (!selectedNode) return;
@@ -278,21 +284,6 @@ export default function FlowChart({
     [edges, info, persist],
   );
 
-  const handleMetricChange = useCallback(
-    (field: keyof ProcessInfo['metrics'], value: string) => {
-      const newInfo = {
-        ...info,
-        metrics: {
-          ...info.metrics,
-          [field]: value,
-        },
-      };
-      setInfo(newInfo);
-      persist(nodes, edges, newInfo);
-    },
-    [info, nodes, edges, persist],
-  );
-
   const handleSlaChange = useCallback(
     (level: string, value: string) => {
       const newInfo = { ...info, sla: { ...info.sla, [level]: value } };
@@ -318,79 +309,178 @@ export default function FlowChart({
     setSelectedNode(node);
   }, [focusNodeId, highlightNonce, nodes, flowInstance]);
 
-  const animationPath = useMemo(() => buildAnimationPath(nodes, edges), [nodes, edges]);
+  const stopAnimation = useCallback(() => {
+    setIsAnimating(false);
+    setPendingDecision(null);
+    setActiveAnimatedEdgeId(undefined);
+  }, []);
+
+  const resetAnimation = useCallback(() => {
+    const startNode = graphMaps.roots[0] ?? [...nodes].sort(compareNodePosition)[0];
+    if (!startNode) {
+      return;
+    }
+    setAnimatedNodeIds([startNode.id]);
+    setAnimatedEdgeIds([]);
+    setPendingDecision(null);
+    setActiveAnimatedEdgeId(undefined);
+    setIsAnimating(false);
+  }, [graphMaps.roots, nodes]);
+
+  const startAnimation = useCallback(() => {
+    if (animatedNodeIds.length === 0) {
+      const startNode = graphMaps.roots[0] ?? [...nodes].sort(compareNodePosition)[0];
+      if (!startNode) {
+        return;
+      }
+      setAnimatedNodeIds([startNode.id]);
+      setAnimatedEdgeIds([]);
+    }
+    setPendingDecision(null);
+    setIsAnimating(true);
+  }, [animatedNodeIds.length, graphMaps.roots, nodes]);
+
+  const appendAnimationStep = useCallback((edge: Edge) => {
+    setAnimatedEdgeIds(prev => [...prev, edge.id]);
+    setAnimatedNodeIds(prev => [...prev, edge.target]);
+    setActiveAnimatedEdgeId(edge.id);
+  }, []);
+
+  const handleDecisionSelect = useCallback((edgeId: string) => {
+    if (!pendingDecision) {
+      return;
+    }
+    const selectedEdge = pendingDecision.options.find(option => option.id === edgeId);
+    if (!selectedEdge) {
+      return;
+    }
+    appendAnimationStep(selectedEdge);
+    setPendingDecision(null);
+    setIsAnimating(true);
+  }, [appendAnimationStep, pendingDecision]);
+
+  const advanceAnimation = useCallback(() => {
+    if (!isAnimating || pendingDecision) {
+      return;
+    }
+
+    const currentNodeId = animatedNodeIds[animatedNodeIds.length - 1];
+    if (!currentNodeId) {
+      return;
+    }
+
+    const currentNode = graphMaps.nodeMap.get(currentNodeId);
+    const outgoing = graphMaps.outgoing.get(currentNodeId) ?? [];
+    const visitedEdges = new Set(animatedEdgeIds);
+    const nextCandidates = outgoing.filter(edge => !visitedEdges.has(edge.id));
+
+    if (nextCandidates.length === 0) {
+      setIsAnimating(false);
+      setActiveAnimatedEdgeId(undefined);
+      return;
+    }
+
+    const isDecisionNode = currentNode?.data.label.includes('?') ?? false;
+    if (isDecisionNode || nextCandidates.length > 1) {
+      setPendingDecision({ nodeId: currentNodeId, options: nextCandidates });
+      setIsAnimating(false);
+      setActiveAnimatedEdgeId(undefined);
+      return;
+    }
+
+    appendAnimationStep(nextCandidates[0]);
+  }, [isAnimating, pendingDecision, animatedNodeIds, animatedEdgeIds, graphMaps.nodeMap, graphMaps.outgoing, appendAnimationStep]);
 
   useEffect(() => {
-    if (!isAnimating || animationPath.nodeIds.length === 0) {
+    if (!isAnimating) {
       return undefined;
     }
 
     const timer = window.setInterval(() => {
-      setAnimationStep(prev => prev + 1);
+      advanceAnimation();
     }, ANIMATION_SPEEDS[animationSpeed]);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [isAnimating, animationSpeed, animationPath.nodeIds.length]);
+  }, [isAnimating, animationSpeed, advanceAnimation]);
 
   useEffect(() => {
-    if (!isAnimating) {
-      setAnimationStep(0);
+    if (!flowInstance) {
+      return;
     }
-  }, [isAnimating]);
-
-  const animatedNodeId = isAnimating && animationPath.nodeIds.length > 0
-    ? animationPath.nodeIds[animationStep % animationPath.nodeIds.length]
-    : undefined;
-  const animatedEdgeId = isAnimating && animationPath.edgeIds.length > 0
-    ? animationPath.edgeIds[animationStep % animationPath.edgeIds.length]
-    : undefined;
+    const currentNodeId = animatedNodeIds[animatedNodeIds.length - 1];
+    if (!currentNodeId) {
+      return;
+    }
+    const node = nodes.find(item => item.id === currentNodeId);
+    if (!node) {
+      return;
+    }
+    const width = typeof node.width === 'number' ? node.width : 180;
+    const height = typeof node.height === 'number' ? node.height : 60;
+    flowInstance.setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+      zoom: 1.15,
+      duration: 450,
+    });
+  }, [animatedNodeIds, flowInstance, nodes]);
 
   const displayNodes = useMemo(() => {
-    if (highlightNodeIds.length === 0 && !animatedNodeId) {
+    if (highlightNodeIds.length === 0 && animatedNodeIds.length === 0) {
       return nodes;
     }
 
     const highlighted = new Set(highlightNodeIds);
+    const traversed = new Set(animatedNodeIds);
+    const activeNodeId = animatedNodeIds[animatedNodeIds.length - 1];
     return nodes.map(node => {
-      if (!highlighted.has(node.id) && node.id !== animatedNodeId) {
+      if (!highlighted.has(node.id) && !traversed.has(node.id)) {
         return node;
       }
 
-      const isAnimated = node.id === animatedNodeId;
+      const isAnimated = node.id === activeNodeId;
       return {
         ...node,
         style: {
           ...node.style,
           boxShadow: isAnimated
-            ? '0 0 0 4px color-mix(in srgb, var(--rc-primary-600) 45%, transparent), 0 0 18px color-mix(in srgb, var(--rc-primary-600) 28%, transparent)'
+            ? '0 0 0 5px color-mix(in srgb, #6366f1 45%, transparent), 0 0 18px color-mix(in srgb, #6366f1 36%, transparent)'
             : '0 0 0 3px color-mix(in srgb, var(--rc-primary-600) 35%, transparent)',
-          borderColor: isAnimated ? 'var(--rc-primary-600)' : 'var(--rc-primary-700)',
+          borderColor: isAnimated ? '#6366f1' : 'var(--rc-primary-700)',
         },
       };
     });
-  }, [nodes, highlightNodeIds, animatedNodeId]);
+  }, [nodes, highlightNodeIds, animatedNodeIds]);
 
   const displayEdges = useMemo(() => {
-    if (!animatedEdgeId) {
+    if (animatedEdgeIds.length === 0) {
       return edges;
     }
 
-    return edges.map(edge =>
-      edge.id === animatedEdgeId
-        ? {
-            ...edge,
-            animated: true,
-            style: {
-              ...edge.style,
-              stroke: 'var(--rc-primary-600)',
-              strokeWidth: 3,
-            },
-          }
-        : edge,
-    );
-  }, [edges, animatedEdgeId]);
+    const traversedEdges = new Set(animatedEdgeIds);
+
+    return edges.map(edge => {
+      if (!traversedEdges.has(edge.id)) {
+        return edge;
+      }
+
+      const isActiveEdge = edge.id === activeAnimatedEdgeId;
+      return {
+        ...edge,
+        animated: isActiveEdge,
+        style: {
+          ...edge.style,
+          stroke: isActiveEdge ? '#6366f1' : 'var(--rc-primary-600)',
+          strokeWidth: isActiveEdge ? 3.5 : 2.6,
+          opacity: 1,
+        },
+      };
+    });
+  }, [edges, animatedEdgeIds, activeAnimatedEdgeId]);
+
+  const decisionNodeLabel = pendingDecision
+    ? graphMaps.nodeMap.get(pendingDecision.nodeId)?.data.label
+    : undefined;
 
   const handleExport = useCallback(
     async (format: 'png' | 'pdf') => {
@@ -444,37 +534,8 @@ export default function FlowChart({
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-[var(--rc-primary-100)] bg-white/80 px-4 py-3 backdrop-blur-sm">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rc-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 font-asap">Avg. Resolution Time</p>
-              {isEditable ? (
-                <input
-                  value={info.metrics.averageResolutionTime}
-                  onChange={e => handleMetricChange('averageResolutionTime', e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)]"
-                  aria-label="Average resolution time"
-                />
-              ) : (
-                <p className="mt-2 text-lg font-semibold text-gray-900">{info.metrics.averageResolutionTime}</p>
-              )}
-            </div>
-            <div className="rc-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 font-asap">SLA Compliance</p>
-              {isEditable ? (
-                <input
-                  value={info.metrics.slaCompliance}
-                  onChange={e => handleMetricChange('slaCompliance', e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)]"
-                  aria-label="SLA compliance"
-                />
-              ) : (
-                <p className="mt-2 text-lg font-semibold text-gray-900">{info.metrics.slaCompliance}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap xl:justify-end">
+        <div className="flex justify-end">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => handleExport('png')}
@@ -483,35 +544,58 @@ export default function FlowChart({
             >
               {activeExport === 'png' ? 'Exporting PNG...' : 'Export PNG'}
             </button>
-            <button
-              type="button"
-              onClick={() => handleExport('pdf')}
-              disabled={activeExport !== null}
-              className="rounded-lg border border-[var(--rc-primary-100)] bg-white px-3 py-2 text-xs font-medium text-[var(--rc-primary-900)] hover:bg-[var(--rc-primary-50)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {activeExport === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAnimating(prev => !prev)}
-              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                isAnimating
-                  ? 'border-[var(--rc-primary-100)] bg-[var(--rc-primary-50)] text-[var(--rc-primary-900)]'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {isAnimating ? 'Stop Animation' : 'Start Animation'}
-            </button>
-            <select
-              value={animationSpeed}
-              onChange={e => setAnimationSpeed(e.target.value as AnimationSpeed)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)]"
-              aria-label="Animation speed"
-            >
-              <option value="slow">Speed: Slow</option>
-              <option value="normal">Speed: Normal</option>
-              <option value="fast">Speed: Fast</option>
-            </select>
+            <div className="relative" ref={moreActionsRef}>
+              <button
+                type="button"
+                onClick={() => setShowMoreActions(prev => !prev)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--rc-primary-100)] bg-white px-3 py-2 text-xs font-medium text-[var(--rc-primary-900)] hover:bg-[var(--rc-primary-50)]"
+                aria-expanded={showMoreActions}
+                aria-haspopup="menu"
+              >
+                More
+                <span className="text-[10px]" aria-hidden="true">▾</span>
+              </button>
+
+              {showMoreActions && (
+                <div
+                  className="absolute right-0 top-full z-30 mt-2 w-52 rounded-xl border border-[var(--rc-border-soft)] bg-white/95 p-2 shadow-xl backdrop-blur-sm"
+                  role="menu"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreActions(false);
+                      void handleExport('pdf');
+                    }}
+                    disabled={activeExport !== null}
+                    className="w-full rounded-lg border border-transparent bg-white px-3 py-2 text-left text-xs font-medium text-[var(--rc-primary-900)] hover:border-[var(--rc-primary-100)] hover:bg-[var(--rc-primary-50)] disabled:cursor-not-allowed disabled:opacity-60"
+                    role="menuitem"
+                  >
+                    {activeExport === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreActions(false);
+                      if (isAnimating || pendingDecision) {
+                        stopAnimation();
+                        return;
+                      }
+                      if (animatedNodeIds.length === 0) {
+                        resetAnimation();
+                      }
+                      startAnimation();
+                    }}
+                    className="mt-1 w-full rounded-lg border border-transparent bg-white px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-[var(--rc-primary-100)] hover:bg-gray-50"
+                    role="menuitem"
+                  >
+                    {isAnimating || pendingDecision ? 'Stop Guided Animation' : 'Start Guided Animation'}
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
         {exportError && <p className="mt-2 text-xs text-red-600">{exportError}</p>}
@@ -519,6 +603,90 @@ export default function FlowChart({
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div ref={chartViewportRef} className="relative min-h-[320px] flex-1">
+        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--rc-border-soft)] bg-white/90 px-3 py-2 shadow-lg backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={resetAnimation}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-100"
+              aria-label="Reset guided animation"
+            >
+              ↺
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isAnimating) {
+                  stopAnimation();
+                  return;
+                }
+                if (animatedNodeIds.length === 0) {
+                  resetAnimation();
+                }
+                startAnimation();
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-violet-400 text-sm text-white hover:bg-violet-500"
+              aria-label={isAnimating ? 'Pause guided animation' : 'Play guided animation'}
+            >
+              {isAnimating ? '❚❚' : '▶'}
+            </button>
+            <div className="h-5 w-px bg-gray-200" />
+            {(Object.keys(ANIMATION_SPEEDS) as AnimationSpeed[]).map(speed => (
+              <button
+                key={speed}
+                type="button"
+                onClick={() => setAnimationSpeed(speed)}
+                className={`rounded-full px-2 py-1 text-[11px] font-medium ${
+                  animationSpeed === speed
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {speed === 'slow' ? 'Slow' : speed === 'normal' ? 'Normal' : 'Fast'}
+              </button>
+            ))}
+            <div className="h-5 w-px bg-gray-200" />
+            <span className="text-xs font-semibold text-gray-600">{animatedNodeIds.length} / {nodes.length}</span>
+          </div>
+        </div>
+
+        {pendingDecision && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4">
+            <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[var(--rc-border-soft)] bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
+              <div className="mb-3 flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500 font-asap">Choose a Path</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-800">{decisionNodeLabel ?? 'Decision Node'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={stopAnimation}
+                  className="text-sm text-gray-400 hover:text-gray-600"
+                  aria-label="Close decision chooser"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {pendingDecision.options.map(option => {
+                  const targetNode = graphMaps.nodeMap.get(option.target);
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleDecisionSelect(option.id)}
+                      className="rounded-xl border border-[var(--rc-border-soft)] bg-gray-50 p-3 text-left transition-colors hover:bg-white"
+                    >
+                      <p className="text-sm font-semibold text-gray-800">{option.label ? String(option.label) : 'Path'}</p>
+                      <p className="mt-1 text-xs text-gray-500">{targetNode?.data.label ?? option.target}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
@@ -617,9 +785,9 @@ export default function FlowChart({
                   <p className="text-xs font-medium text-gray-500 mb-1">Responsible Role</p>
                   <p className="text-sm text-gray-700">{selectedNode.data.metadata?.responsibleRole || 'No role assigned.'}</p>
                 </div>
-                <div className="bg-[var(--rc-primary-50)] rounded-lg p-3 border border-[var(--rc-primary-100)]">
-                  <p className="text-xs font-medium text-[var(--rc-primary-700)] mb-1">Tips</p>
-                  <p className="text-sm text-[var(--rc-primary-900)]">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <p className="text-xs font-medium text-gray-600 mb-1">Tips</p>
+                  <p className="text-sm text-gray-800">
                     {selectedNode.data.metadata?.tips || 'Click any node to see its details. Use scroll to zoom, drag to pan.'}
                   </p>
                 </div>
