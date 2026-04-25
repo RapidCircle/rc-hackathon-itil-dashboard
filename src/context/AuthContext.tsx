@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Session } from '../types/auth';
 import { getSession, setSession, getUsers, setUsers } from '../utils/storage';
+
+const AUTH_CHANGE_EVENT = 'itil-auth-change';
 
 interface AuthContextValue {
   currentUser: Session | null;
@@ -14,6 +16,19 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Session | null>(() => getSession());
 
+  useEffect(() => {
+    const syncSession = () => {
+      setCurrentUser(getSession());
+    };
+
+    window.addEventListener(AUTH_CHANGE_EVENT, syncSession);
+    window.addEventListener('storage', syncSession);
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, syncSession);
+      window.removeEventListener('storage', syncSession);
+    };
+  }, []);
+
   const login = useCallback((email: string, password: string): boolean => {
     const users = getUsers();
     const found = users.find(u => u.email === email && u.password === password);
@@ -21,12 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const session: Session = { id: found.id, name: found.name, email: found.email, role: found.role };
     setSession(session);
     setCurrentUser(session);
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
     return true;
   }, []);
 
   const logout = useCallback(() => {
     setSession(null);
     setCurrentUser(null);
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
   }, []);
 
   const updateProfile = useCallback((payload: { name: string; password?: string }) => {
@@ -63,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setSession(updatedSession);
     setCurrentUser(updatedSession);
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 
     return { success: true };
   }, [currentUser]);
